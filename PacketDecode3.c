@@ -9,6 +9,7 @@
 #define PROGRAM_NAME "Packet_Decode"
 void print_ethernet_header(FILE* file);
 void print_ip_header(FILE* file);
+void print_tcp_header(FILE* file);
 void print_payload(FILE* file);
 
 int main(int argc, char** argv) {
@@ -30,6 +31,7 @@ int main(int argc, char** argv) {
 			//decode the packet
 			print_ethernet_header(file);
 			print_ip_header(file);
+			print_tcp_header(file);
 			print_payload(file);
 			fclose(file);
 		}
@@ -191,7 +193,7 @@ void print_ip_header(FILE* file) {
 	if(options_flag) {
 		for(int i = 0; i < options_flag; i++) {
 			uch = fgetc(file);
-			printf("IP Option Word #%d:\t\t0x%02x", i, uch);
+			printf("IP Option Word #%u:\t\t0x%02x", i, uch);
 			uch = fgetc(file);
 			printf("%02x", uch);
 			uch = fgetc(file);
@@ -202,6 +204,137 @@ void print_ip_header(FILE* file) {
 	} else {
 		printf("Options\t\t\t\tNo Options\n");
 	}
+}
+
+void print_tcp_header(FILE* file) {
+	unsigned char uch = 0;
+	unsigned int temp = 0;
+	unsigned char options_flag = 0;
+	printf("\nTCP Header:\n----------------\nSource Port:\t\t\t");
+
+	//get the source port
+	temp = getc(file);
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	printf("%u", temp);
+
+	//get desination port
+	printf("\nDestination Port:\t\t");
+
+	temp = getc(file);
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	printf("%u", temp);
+
+	//get sequence Number
+	printf("\nRaw Sequence Number:\t\t");
+	
+	temp = getc(file);
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	printf("%u", temp);
+
+	//getting sequence number
+	printf("\nRaw Acknowledgement Number:\t");
+	
+	temp = getc(file);
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	printf("%u", temp);
+
+	//getting data offset
+	printf("\nData Offset\t\t\t");
+	uch = getc(file) & 0b11110000;
+	uch = uch >> 4;
+	printf("%u", uch);
+
+	//saving options
+	options_flag = uch - 5;
+
+	//getting flags
+	printf("\nFlags:\t\t\t\t");
+	uch = getc(file);
+	if(uch & 0b10000000) {
+		printf("CWR ");
+	}
+
+	if(uch & 0b01000000) {
+		printf("ECE ");
+	}
+
+	if(uch & 0b00100000) {
+		printf("URG ");
+	}
+
+	if(uch & 0b00010000) {
+		printf("ACK ");
+	}
+
+	if(uch & 0b00001000) {
+		printf("PSH ");
+	}
+
+	if(uch & 0b00000100) {
+		printf("RST ");
+	}
+
+	if(uch & 0b00000010) {
+		printf("SYN ");
+	}
+
+	if(uch & 0b00000001) {
+		printf("FIN");
+	}
+
+	if(!uch) {
+		printf("No Flags Set");
+	}
+
+	//getting advertise widnow
+	printf("\nWindow Size\t\t\t");
+	temp = getc(file);
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	printf("%u", temp);
+
+	//getting checksum
+	printf("\nTCP Checksum:\t\t\t");
+	temp = getc(file);
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	printf("0x%02x", temp);
+
+	//getting siy urgent pointer
+	printf("\nUrgent Pointer:\t\t\t");
+	temp = getc(file);
+	uch = getc(file);
+	temp = (temp << 8) | uch;
+	printf("%u\n", temp);
+	
+	//if we have options loop any print however many words we have
+	if(options_flag) {
+		for(int i = 0; i < options_flag; i++) {
+			uch = fgetc(file);
+			printf("TCP Option Word #%u:\t\t0x%02x", i, uch);
+			uch = fgetc(file);
+			printf("%02x", uch);
+			uch = fgetc(file);
+			printf("%02x", uch);
+			uch = fgetc(file);
+			printf("%02x\n", uch);
+		}
+	} else {
+		printf("Options\t\t\t\tNo Options\n");
+	}
+
 }
 /**
 	* This function prints the rest of the pay load from a packet
